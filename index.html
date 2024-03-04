@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <title>Thai Word Cut</title>
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  >
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
+  <link
+    href="https://fonts.googleapis.com/css2?family=Mali:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400;1,500;1,600;1,700&display=swap"
+    rel="stylesheet"
+    rel="preload"
+  >
+  <link
+    href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons"
+    rel="stylesheet"
+    type="text/css"
+  >
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/quasar@2.14.6/dist/quasar.prod.css"
+    rel="stylesheet"
+    type="text/css"
+  >
+  <style>
+    body {
+      font-family: 'Mali', sans-serif;
+    }
+
+    canvas {
+      font-family: 'Mali';
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <q-layout view="hHh lpR fff">
+      <q-page-container>
+        <q-page>
+          <q-card flat>
+            <q-toolbar class="bg-teal text-white">
+              <q-toolbar-title>
+                <span v-if="$q.screen.gt.sm">
+                  Javascript Intl Segmenter (Thai Word Cut) Demo
+                </span>
+                <span v-else>
+                  (Thai Word Cut) Demo
+                </span>
+              </q-toolbar-title>
+            </q-toolbar>
+            <q-card-section class="row">
+              <div class="col-12 col-sm-6">
+                <div>
+                  <h5>ข้อความภาษาไทย</h5>
+                </div>
+
+                <div>
+                  <q-input
+                    type="textarea"
+                    v-model="msg"
+                  ></q-input>
+                </div>
+                <div>
+                  <q-badge
+                    color="primary"
+                    :label="`Word count: ${wordsList.length}`"
+                  />
+                </div>
+                <q-card-actions
+                  align="center"
+                  v-if="segmenterSupported()"
+                >
+
+                  <q-btn
+                    label="Draw Canvas"
+                    color="primary"
+                    no-caps
+                    class="q-ma-md"
+                    @click="draw"
+                  ></q-btn>
+                  <q-btn
+                    label="Export as PNG"
+                    color="primary"
+                    no-caps
+                    class="q-ma-md"
+                    @click="download"
+                  ></q-btn>
+                </q-card-actions>
+                <div v-if="segmenterSupported()">
+                  <q-expansion-item
+                    group="somegroup"
+                    icon="text_fields"
+                    label="Words List"
+                    header-class="bg-teal text-white"
+                    expand-icon-class="text-white"
+                  >
+                    <q-card class="bg-teal-2">
+                      <q-card-section>
+                        {{wordsList}}
+                      </q-card-section>
+                    </q-card>
+                  </q-expansion-item>
+                </div>
+
+              </div>
+              <div class="col-12 col-sm-6">
+                <div>
+                  <h5>Canvas</h5>
+                </div>
+                <div v-if="segmenterSupported()">
+                  <canvas
+                    ref="draw_canvas"
+                    style="width: 100%; height: 100%;"
+                  ></canvas>
+                </div>
+                <div v-else>
+                  <q-card-section class="text-red">
+                    Browser ไม่รองรับฟีเจอร์นี้
+                  </q-card-section>
+                </div>
+              </div>
+            </q-card-section>
+            <q-card-section class="text-red">
+              * Firefox ไม่รองรับฟีเจอร์นี้
+            </q-card-section>
+          </q-card>
+        </q-page>
+      </q-page-container>
+      <q-footer>
+        <q-toolbar class="bg-teal-2 text-grey-7">
+          <span class="text-h6"><a
+              style="color: inherit; text-decoration: none;"
+              href="https://github.com/mrchoke"
+            >MrChoke.org</a></span>
+          <q-space></q-space>
+          <q-btn
+            flat
+            dense
+            color="primary"
+            label="MDN"
+            icon-right="open_in_new"
+            href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter"
+          />
+        </q-toolbar>
+      </q-footer>
+    </q-layout>
+
+  </div>
+
+</body>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@2.14.6/dist/quasar.umd.prod.js"></script>
+<script>
+  const { createApp, ref, onMounted, watch, computed } = Vue
+
+  createApp({
+    setup () {
+      const draw_canvas = ref(null)
+      const msg = ref('แผ่นดินไหวครั้งนี้มีความคล้ายคลึงกันกับแผ่นดินไหวนอกชายฝั่งจังหวัดฟูกูชิมะ ค.ศ. 2021 มาก ทั้งสองเหตุการณ์มีจุดศูนย์กลางแผ่นดินไหวแทบจะในบริเวณเดียวกัน นักวิทยาแผ่นดินไหวของญี่ปุ่นมองว่าแผ่นดินไหวทั้งสองครั้งมีลักษณะคล้ายกับจนแทบจะเรียกได้ว่าเป็นแฝดของกันและกัน นอกจากนี้ขนาดโมเมนต์ของแผ่นดินไหวยังใกล้เคียงกัน แผ่นดินไหวทั้งสองครั้งยังสามารถบันทึกความรุนแรงแผ่นดินไหวสูงสุดที่ 6+ ในจังหวัดมิยางิและฟุกุชิมะ')
+      const wordsList = ref([])
+      const canvasWordsList = ref([])
+
+      const segmenterSupported = () => {
+        return typeof Intl.Segmenter === 'function'
+      }
+      const wordcut = (msg, x = 10, y = 10, lineHeight = 20, ctx) => {
+        const maxWidth = 600
+        const seg = new Intl.Segmenter('th', { granularity: 'word' })
+        wordsList.value = Array.from(seg.segment(String(msg))).filter(i => i.isWordLike).map(i => i.segment)
+        canvasWordsList.value = Array.from(seg.segment(String(msg))).map(i => i.segment)
+
+        let line = ''
+
+        for (let i = 0; i < canvasWordsList.value.length; i++) {
+          const testLine = line + canvasWordsList.value[i] + ''
+          const metrics = ctx.measureText(testLine)
+          const testWidth = metrics.width
+
+          if (testWidth > maxWidth && i > 0) {
+            ctx.fillText(line, x, y, maxWidth)
+            line = canvasWordsList.value[i] + ''
+            y += lineHeight
+          } else {
+            line = testLine
+          }
+        }
+        ctx.fillText(line, x, y, maxWidth)
+
+        return y
+      }
+
+      const draw = () => {
+        const canvas = draw_canvas.value
+        canvas.width = 720
+        canvas.height = 500
+        const ctx = canvas.getContext('2d')
+        ctx.quality = 'bilinear'
+
+        ctx.fillStyle = '#fff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        ctx.font = '22px Mali'
+        ctx.fillStyle = 'black'
+
+        const x = 30
+        let y = 50
+
+        const paragraph = msg.value.split('\n')
+
+        for (let i = 0; i < paragraph.length; i++) {
+          y = wordcut(paragraph[i], x, y, 33, ctx)
+          y += 33
+        }
+        // wordcut(msg.value, x, y, 33, ctx)
+      }
+
+      const download = () => {
+        const dataURL = draw_canvas.value.toDataURL('image/png')
+
+        const link = document.createElement('a')
+        link.href = dataURL
+        link.download = 'canvas.png'
+
+        link.click()
+      }
+
+      onMounted(() => {
+        setTimeout(() => {
+          draw()
+        }, 1500)
+      })
+
+      watch(msg, () => {
+        draw()
+      })
+
+      return { msg, wordsList, draw_canvas, canvasWordsList, draw, download, segmenterSupported }
+    }
+  }).use(Quasar).mount('#app')
+</script>
+
+</html>
